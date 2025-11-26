@@ -34,6 +34,10 @@ JNIEXPORT jintArray JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getPrevie
 JNIEXPORT void JNICALL Java_com_example_toupcamdemo_ToupCamHelper_pullImageNative(JNIEnv *env, jobject obj, jobject directBuffer);
 JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_isAliveNative(JNIEnv *env, jobject obj);
 JNIEXPORT void JNICALL Java_com_example_toupcamdemo_ToupCamHelper_releaseCameraNative(JNIEnv *env, jobject obj);
+JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_setExposureTimeNative(JNIEnv *env, jobject obj, jint timeUs);
+JNIEXPORT jint JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getExposureTimeNative(JNIEnv *env, jobject obj);
+JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_setGainNative(JNIEnv *env, jobject obj, jint gain);
+JNIEXPORT jint JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getGainNative(JNIEnv *env, jobject obj);
 
 JNIEXPORT void JNICALL Java_com_example_toupcamdemo_ToupCamHelper_init(JNIEnv *env, jobject obj) {
     gObject = env->NewGlobalRef(obj);
@@ -99,6 +103,40 @@ JNIEXPORT jstring JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getModelNam
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     gLocalVm = vm;
     return JNI_VERSION_1_2;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_setExposureTimeNative(JNIEnv *env, jobject obj, jint timeUs) {
+    if (!gHcam) {
+        return JNI_FALSE;
+    }
+    HRESULT hr = Toupcam_put_ExpoTime(gHcam, (unsigned)timeUs);
+    return SUCCEEDED(hr) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jint JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getExposureTimeNative(JNIEnv *env, jobject obj) {
+    if (!gHcam) {
+        return 0;
+    }
+    unsigned time = 0;
+    Toupcam_get_ExpoTime(gHcam, &time);
+    return (jint)time;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_setGainNative(JNIEnv *env, jobject obj, jint gain) {
+    if (!gHcam) {
+        return JNI_FALSE;
+    }
+    HRESULT hr = Toupcam_put_ExpoAGain(gHcam, (unsigned short)gain);
+    return SUCCEEDED(hr) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jint JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getGainNative(JNIEnv *env, jobject obj) {
+    if (!gHcam) {
+        return 0;
+    }
+    unsigned short gain = 0;
+    Toupcam_get_ExpoAGain(gHcam, &gain);
+    return (jint)gain;
 }
 
 void JNI_OnUnload(JavaVM *vm, void *reserved) {

@@ -128,6 +128,64 @@ public class ToupCamHelper {
     }
 
     /**
+     * 设置曝光时间
+     *
+     * @param timeUs 曝光时间（微秒）
+     * @return 是否设置成功
+     */
+    public boolean setExposureTime(int timeUs) {
+        try {
+            return setExposureTimeNative(timeUs);
+        } catch (Exception e) {
+            Log.e(TAG, "设置曝光时间失败: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 获取当前曝光时间
+     *
+     * @return 曝光时间（微秒）
+     */
+    public int getExposureTime() {
+        try {
+            return getExposureTimeNative();
+        } catch (Exception e) {
+            Log.e(TAG, "获取曝光时间失败: " + e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * 设置增益
+     *
+     * @param gain 增益值（百分比，如 100 表示 100%）
+     * @return 是否设置成功
+     */
+    public boolean setGain(int gain) {
+        try {
+            return setGainNative(gain);
+        } catch (Exception e) {
+            Log.e(TAG, "设置增益失败: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 获取当前增益
+     *
+     * @return 增益值（百分比）
+     */
+    public int getGain() {
+        try {
+            return getGainNative();
+        } catch (Exception e) {
+            Log.e(TAG, "获取增益失败: " + e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
      * 释放相机资源
      */
     public void releaseCamera() {
@@ -181,6 +239,26 @@ public class ToupCamHelper {
      * 检查是否存活
      */
     private native boolean isAliveNative();
+
+    /**
+     * 设置曝光时间（微秒）
+     */
+    private native boolean setExposureTimeNative(int timeUs);
+
+    /**
+     * 获取曝光时间（微秒）
+     */
+    private native int getExposureTimeNative();
+
+    /**
+     * 设置增益（百分比）
+     */
+    private native boolean setGainNative(int gain);
+
+    /**
+     * 获取增益（百分比）
+     */
+    private native int getGainNative();
 
     /**
      * 释放相机

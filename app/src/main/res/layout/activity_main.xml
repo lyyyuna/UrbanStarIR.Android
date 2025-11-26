@@ -9,11 +9,11 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="ToupCam 相机连接示例"
-        android:textSize="24sp"
+        android:text="ToupCam 拍照程序"
+        android:textSize="20sp"
         android:textStyle="bold"
         android:gravity="center"
-        android:paddingBottom="16dp" />
+        android:paddingBottom="8dp" />
 
     <!-- 状态显示 -->
     <TextView
@@ -21,45 +21,302 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="状态: 初始化中..."
-        android:textSize="16sp"
+        android:textSize="14sp"
         android:textColor="#2196F3"
-        android:padding="12dp"
+        android:padding="8dp"
         android:background="#E3F2FD"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="8dp" />
 
-    <!-- 分隔线 -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#CCCCCC"
-        android:layout_marginBottom="16dp" />
-
-    <!-- 相机信息显示 -->
-    <ScrollView
+    <!-- 预览窗口 -->
+    <ImageView
+        android:id="@+id/iv_preview"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:background="#000000"
+        android:scaleType="fitCenter"
+        android:contentDescription="相机预览" />
 
-        <TextView
-            android:id="@+id/tv_camera_info"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="等待相机连接..."
-            android:textSize="14sp"
-            android:fontFamily="monospace"
-            android:padding="12dp"
-            android:background="#F5F5F5"
-            android:textColor="#333333" />
-    </ScrollView>
-
-    <!-- 说明信息 -->
-    <TextView
+    <!-- 控制面板 -->
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="提示：请通过 USB OTG 连接 ToupCam 相机"
-        android:textSize="12sp"
-        android:textColor="#666666"
-        android:gravity="center"
-        android:paddingTop="16dp" />
+        android:layout_marginTop="8dp">
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- 曝光时间控制 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="曝光时间"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:paddingTop="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tv_exposure_value"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="0.01 秒"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btn_exposure_minus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="-"
+                    android:textSize="20sp" />
+
+                <SeekBar
+                    android:id="@+id/seek_exposure"
+                    android:layout_width="0dp"
+                    android:layout_weight="2"
+                    android:layout_height="wrap_content"
+                    android:max="1000"
+                    android:progress="1" />
+
+                <Button
+                    android:id="@+id/btn_exposure_plus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="+"
+                    android:textSize="20sp" />
+            </LinearLayout>
+
+            <!-- 增益控制 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="增益"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:paddingTop="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tv_gain_value"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="100"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btn_gain_minus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="-"
+                    android:textSize="20sp" />
+
+                <SeekBar
+                    android:id="@+id/seek_gain"
+                    android:layout_width="0dp"
+                    android:layout_weight="2"
+                    android:layout_height="wrap_content"
+                    android:max="500"
+                    android:progress="10" />
+
+                <Button
+                    android:id="@+id/btn_gain_plus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="+"
+                    android:textSize="20sp" />
+            </LinearLayout>
+
+            <!-- 延时摄影控制 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="延时摄影"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:paddingTop="8dp" />
+
+            <!-- 帧间隔控制 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="4dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="帧间隔"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tv_interval_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="1.0 秒"
+                    android:textSize="14sp"
+                    android:minWidth="80dp"
+                    android:gravity="end" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <Button
+                    android:id="@+id/btn_interval_minus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="-"
+                    android:textSize="20sp" />
+
+                <SeekBar
+                    android:id="@+id/seek_interval"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:max="60"
+                    android:progress="10" />
+
+                <Button
+                    android:id="@+id/btn_interval_plus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="+"
+                    android:textSize="20sp" />
+            </LinearLayout>
+
+            <!-- 总帧数控制 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="4dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="总帧数"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tv_frames_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="100 帧"
+                    android:textSize="14sp"
+                    android:minWidth="80dp"
+                    android:gravity="end" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <Button
+                    android:id="@+id/btn_frames_minus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="-"
+                    android:textSize="20sp" />
+
+                <SeekBar
+                    android:id="@+id/seek_frames"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:max="300"
+                    android:progress="10" />
+
+                <Button
+                    android:id="@+id/btn_frames_plus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="+"
+                    android:textSize="20sp" />
+            </LinearLayout>
+
+            <!-- 视频时长显示 -->
+            <TextView
+                android:id="@+id/tv_video_duration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="视频时长: 3.3 秒"
+                android:textSize="14sp"
+                android:textColor="#4CAF50"
+                android:gravity="center"
+                android:paddingTop="4dp" />
+
+            <!-- 真实时间跨度显示 -->
+            <TextView
+                android:id="@+id/tv_real_duration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="拍摄耗时: 1分40秒"
+                android:textSize="14sp"
+                android:textColor="#FF9800"
+                android:gravity="center"
+                android:paddingTop="2dp" />
+
+            <!-- 拍照按钮 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:paddingTop="8dp">
+
+                <Button
+                    android:id="@+id/btn_capture"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="拍照"
+                    android:textSize="16sp"
+                    android:enabled="false" />
+
+                <Button
+                    android:id="@+id/btn_preview_toggle"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="开始预览"
+                    android:textSize="16sp"
+                    android:layout_marginStart="8dp"
+                    android:enabled="false" />
+            </LinearLayout>
+
+            <!-- 延时摄影按钮 -->
+            <Button
+                android:id="@+id/btn_timelapse"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="开始延时摄影"
+                android:textSize="16sp"
+                android:layout_marginTop="8dp"
+                android:enabled="false"
+                android:backgroundTint="#FF5722" />
+        </LinearLayout>
+    </ScrollView>
 </LinearLayout>
