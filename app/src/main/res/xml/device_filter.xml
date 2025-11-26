@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ToupCam USB 设备过滤器 -->
+    <!-- ToupCam 厂商 ID: 0x0547 -->
+    <usb-device vendor-id="1351" />  <!-- 1351 = 0x0547 -->
+
+    <!-- 可以添加其他厂商 ID -->
+    <!-- 例如：<usb-device vendor-id="xxxx" product-id="xxxx" /> -->
+</resources>

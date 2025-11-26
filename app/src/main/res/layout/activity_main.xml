@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- 标题 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ToupCam 相机连接示例"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:paddingBottom="16dp" />
+
+    <!-- 状态显示 -->
+    <TextView
+        android:id="@+id/tv_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="状态: 初始化中..."
+        android:textSize="16sp"
+        android:textColor="#2196F3"
+        android:padding="12dp"
+        android:background="#E3F2FD"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 分隔线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#CCCCCC"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 相机信息显示 -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/tv_camera_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="等待相机连接..."
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:padding="12dp"
+            android:background="#F5F5F5"
+            android:textColor="#333333" />
+    </ScrollView>
+
+    <!-- 说明信息 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="提示：请通过 USB OTG 连接 ToupCam 相机"
+        android:textSize="12sp"
+        android:textColor="#666666"
+        android:gravity="center"
+        android:paddingTop="16dp" />
+
+</LinearLayout>
