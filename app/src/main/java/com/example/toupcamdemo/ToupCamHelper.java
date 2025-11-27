@@ -261,9 +261,48 @@ public class ToupCamHelper {
     private native int getGainNative();
 
     /**
+     * 设置自动曝光开关
+     *
+     * @param enable true=开启自动曝光，false=关闭自动曝光
+     * @return 是否设置成功
+     */
+    public boolean setAutoExposure(boolean enable) {
+        try {
+            return setAutoExposureNative(enable);
+        } catch (Exception e) {
+            Log.e(TAG, "设置自动曝光失败: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 获取自动曝光开关状态
+     *
+     * @return true=自动曝光开启，false=自动曝光关闭
+     */
+    public boolean getAutoExposure() {
+        try {
+            return getAutoExposureNative();
+        } catch (Exception e) {
+            Log.e(TAG, "获取自动曝光状态失败: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * 释放相机
      */
     private native void releaseCameraNative();
+
+    /**
+     * 设置自动曝光（Native）
+     */
+    private native boolean setAutoExposureNative(boolean enable);
+
+    /**
+     * 获取自动曝光状态（Native）
+     */
+    private native boolean getAutoExposureNative();
 
     /**
      * 获取型号名称（静态方法）

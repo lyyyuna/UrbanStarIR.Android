@@ -563,6 +563,10 @@ public class MainActivity extends Activity {
                     tvStatus.setText(String.format("状态: 相机已连接 (%s)",
                             modelName != null ? modelName : "未知型号"));
 
+                    // 禁用自动曝光，以便手动控制曝光时间和增益
+                    cameraHelper.setAutoExposure(false);
+                    Log.d(TAG, "自动曝光已禁用");
+
                     // 设置初始参数
                     cameraHelper.setExposureTime(currentExposureUs);
                     cameraHelper.setGain(currentGain);

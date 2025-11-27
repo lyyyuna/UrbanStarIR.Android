@@ -38,6 +38,8 @@ JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_setExposur
 JNIEXPORT jint JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getExposureTimeNative(JNIEnv *env, jobject obj);
 JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_setGainNative(JNIEnv *env, jobject obj, jint gain);
 JNIEXPORT jint JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getGainNative(JNIEnv *env, jobject obj);
+JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_setAutoExposureNative(JNIEnv *env, jobject obj, jboolean enable);
+JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getAutoExposureNative(JNIEnv *env, jobject obj);
 
 JNIEXPORT void JNICALL Java_com_example_toupcamdemo_ToupCamHelper_init(JNIEnv *env, jobject obj) {
     gObject = env->NewGlobalRef(obj);
@@ -137,6 +139,23 @@ JNIEXPORT jint JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getGainNative(
     unsigned short gain = 0;
     Toupcam_get_ExpoAGain(gHcam, &gain);
     return (jint)gain;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_setAutoExposureNative(JNIEnv *env, jobject obj, jboolean enable) {
+    if (!gHcam) {
+        return JNI_FALSE;
+    }
+    HRESULT hr = Toupcam_put_AutoExpoEnable(gHcam, enable ? 1 : 0);
+    return SUCCEEDED(hr) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_example_toupcamdemo_ToupCamHelper_getAutoExposureNative(JNIEnv *env, jobject obj) {
+    if (!gHcam) {
+        return JNI_FALSE;
+    }
+    int enabled = 0;
+    Toupcam_get_AutoExpoEnable(gHcam, &enabled);
+    return enabled ? JNI_TRUE : JNI_FALSE;
 }
 
 void JNI_OnUnload(JavaVM *vm, void *reserved) {

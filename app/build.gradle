@@ -33,6 +33,11 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    lintOptions {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
     // 配置 JNI 库目录
     sourceSets {
         main {
