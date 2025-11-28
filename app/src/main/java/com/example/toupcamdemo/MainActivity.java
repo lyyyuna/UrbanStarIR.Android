@@ -54,12 +54,9 @@ public class MainActivity extends Activity {
     private SeekBar seekExposure;
     private SeekBar seekGain;
     private Button btnCapture;
-    private Button btnPreviewToggle;
-    private TextView tvIntervalValue;
     private TextView tvFramesValue;
     private TextView tvVideoDuration;
     private TextView tvRealDuration;
-    private SeekBar seekInterval;
     private SeekBar seekFrames;
     private Button btnTimelapse;
 
@@ -76,10 +73,10 @@ public class MainActivity extends Activity {
     private int currentGain = 100; // 默认100%
 
     // 延时摄影参数
-    private int frameIntervalMs = 1000; // 默认1秒间隔
     private int totalFrames = 100; // 默认100帧
     private boolean isTimelapsing = false;
     private int currentFrameCount = 0;
+    private long timelapseStartTime = 0; // 延时摄影开始时间（毫秒）
 
     // 视频编码相关（边拍边编码，不在内存中保存所有帧）
     private android.media.MediaCodec videoEncoder;
@@ -197,7 +194,6 @@ public class MainActivity extends Activity {
         seekExposure = findViewById(R.id.seek_exposure);
         seekGain = findViewById(R.id.seek_gain);
         btnCapture = findViewById(R.id.btn_capture);
-        btnPreviewToggle = findViewById(R.id.btn_preview_toggle);
 
         // 曝光时间控制
         Button btnExposureMinus = findViewById(R.id.btn_exposure_minus);
@@ -209,16 +205,18 @@ public class MainActivity extends Activity {
                 currentExposureUs = progressToExposureTime(progress);
                 updateExposureDisplay();
                 updateTimelapseDisplay(); // 更新延时摄影时间显示
-                if (cameraHelper != null && cameraHelper.isAlive()) {
-                    cameraHelper.setExposureTime(currentExposureUs);
-                }
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
 
             @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // 拖动完毕后才下发参数到相机
+                if (cameraHelper != null && cameraHelper.isAlive()) {
+                    cameraHelper.setExposureTime(currentExposureUs);
+                }
+            }
         });
 
         btnExposureMinus.setOnClickListener(v -> {
@@ -244,16 +242,18 @@ public class MainActivity extends Activity {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 currentGain = progress * 10; // 步进10
                 updateGainDisplay();
-                if (cameraHelper != null && cameraHelper.isAlive()) {
-                    cameraHelper.setGain(currentGain);
-                }
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
 
             @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // 拖动完毕后才下发参数到相机
+                if (cameraHelper != null && cameraHelper.isAlive()) {
+                    cameraHelper.setGain(currentGain);
+                }
+            }
         });
 
         btnGainMinus.setOnClickListener(v -> {
@@ -270,67 +270,24 @@ public class MainActivity extends Activity {
             }
         });
 
-        // 预览切换按钮
-        btnPreviewToggle.setOnClickListener(v -> {
-            if (isPreviewRunning) {
-                stopPreview();
-            } else {
-                startPreview();
-            }
-        });
-
         // 拍照按钮
         btnCapture.setOnClickListener(v -> captureImage());
 
         // 延时摄影控件初始化
-        tvIntervalValue = findViewById(R.id.tv_interval_value);
         tvFramesValue = findViewById(R.id.tv_frames_value);
         tvVideoDuration = findViewById(R.id.tv_video_duration);
         tvRealDuration = findViewById(R.id.tv_real_duration);
-        seekInterval = findViewById(R.id.seek_interval);
         seekFrames = findViewById(R.id.seek_frames);
         btnTimelapse = findViewById(R.id.btn_timelapse);
 
-        // 帧间隔控制 (0.1s - 6s, 进度0-60对应0.1s-6s)
-        Button btnIntervalMinus = findViewById(R.id.btn_interval_minus);
-        Button btnIntervalPlus = findViewById(R.id.btn_interval_plus);
-
-        seekInterval.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                frameIntervalMs = (progress + 1) * 100; // 0.1s - 6.1s
-                updateTimelapseDisplay();
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-
-        btnIntervalMinus.setOnClickListener(v -> {
-            int progress = seekInterval.getProgress();
-            if (progress > 0) {
-                seekInterval.setProgress(progress - 1);
-            }
-        });
-
-        btnIntervalPlus.setOnClickListener(v -> {
-            int progress = seekInterval.getProgress();
-            if (progress < seekInterval.getMax()) {
-                seekInterval.setProgress(progress + 1);
-            }
-        });
-
-        // 总帧数控制 (10 - 3000 帧，进度0-300对应10-3000帧)
+        // 总帧数控制 (10 - 5010 帧，进度0-500对应10-5010帧)
         Button btnFramesMinus = findViewById(R.id.btn_frames_minus);
         Button btnFramesPlus = findViewById(R.id.btn_frames_plus);
 
         seekFrames.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                totalFrames = (progress + 1) * 10; // 10 - 3000 帧
+                totalFrames = (progress + 1) * 10; // 10 - 5010 帧
                 updateTimelapseDisplay();
             }
 
@@ -373,18 +330,19 @@ public class MainActivity extends Activity {
     /**
      * 将进度条值转换为曝光时间（微秒）
      * 0-100: 0-1秒，步进10ms
-     * 101-1000: 1-120秒，步进约133ms
+     * 101-160: 1-30秒，步进0.5s
      */
     private int progressToExposureTime(int progress) {
         if (progress <= 100) {
             // 0-1秒范围，步进10ms
             return progress * 10000; // 10ms = 10000us
         } else {
-            // 1-120秒范围
-            int remaining = progress - 100;
-            int maxRemaining = 1000 - 100; // 900步
-            int timeAbove1s = (int) ((remaining / (float) maxRemaining) * 119000000); // 119秒的微秒数
-            return 1000000 + timeAbove1s; // 1秒 + 额外时间
+            // 1-30秒范围，步进0.5秒
+            int stepsAbove1s = progress - 100;
+            int timeAbove1s = stepsAbove1s * 500000; // 每步0.5秒 = 500000us
+            int result = 1000000 + timeAbove1s;
+            // 限制最大30秒
+            return Math.min(result, 30000000);
         }
     }
 
@@ -396,11 +354,10 @@ public class MainActivity extends Activity {
             // 0-1秒范围
             return timeUs / 10000;
         } else {
-            // 1-120秒范围
+            // 1秒以上范围，步进0.5秒
             int timeAbove1s = timeUs - 1000000;
-            int maxRemaining = 1000 - 100;
-            int progress = (int) ((timeAbove1s / 119000000.0) * maxRemaining);
-            return 100 + progress;
+            int stepsAbove1s = timeAbove1s / 500000; // 每0.5秒为一步
+            return 100 + stepsAbove1s;
         }
     }
 
@@ -418,10 +375,6 @@ public class MainActivity extends Activity {
     }
 
     private void updateTimelapseDisplay() {
-        // 更新帧间隔显示
-        double intervalSec = frameIntervalMs / 1000.0;
-        tvIntervalValue.setText(String.format(Locale.getDefault(), "%.1f 秒", intervalSec));
-
         // 更新总帧数显示
         tvFramesValue.setText(String.format(Locale.getDefault(), "%d 帧", totalFrames));
 
@@ -435,9 +388,9 @@ public class MainActivity extends Activity {
             tvVideoDuration.setText(String.format(Locale.getDefault(), "视频时长: %d分%.1f秒", minutes, seconds));
         }
 
-        // 计算并显示真实拍摄时间跨度：(曝光时间 + 帧间隔) * 总帧数
+        // 计算并显示真实拍摄时间跨度：曝光时间 * 总帧数（连续拍摄，无等待间隔）
         double exposureSec = currentExposureUs / 1000000.0; // 曝光时间（秒）
-        double realDurationSec = (exposureSec + intervalSec) * totalFrames;
+        double realDurationSec = exposureSec * totalFrames;
 
         if (realDurationSec < 60) {
             tvRealDuration.setText(String.format(Locale.getDefault(), "拍摄耗时: %.1f 秒", realDurationSec));
@@ -572,7 +525,6 @@ public class MainActivity extends Activity {
                     cameraHelper.setGain(currentGain);
 
                     // 启用按钮
-                    btnPreviewToggle.setEnabled(true);
                     btnCapture.setEnabled(true);
                     btnTimelapse.setEnabled(true);
 
@@ -594,19 +546,11 @@ public class MainActivity extends Activity {
 
     private void startPreview() {
         if (cameraHelper == null || !cameraHelper.isAlive()) {
-            Toast.makeText(this, "相机未连接", Toast.LENGTH_SHORT).show();
             return;
         }
 
         isPreviewRunning = true;
-        btnPreviewToggle.setText("停止预览");
         Log.d(TAG, "预览已启动（事件驱动模式）");
-    }
-
-    private void stopPreview() {
-        isPreviewRunning = false;
-        btnPreviewToggle.setText("开始预览");
-        Log.d(TAG, "预览已停止");
     }
 
     private void updatePreview() {
@@ -738,7 +682,7 @@ public class MainActivity extends Activity {
     }
 
     private void closeCamera() {
-        stopPreview();
+        isPreviewRunning = false;
 
         if (cameraHelper != null) {
             cameraHelper.releaseCamera();
@@ -748,10 +692,8 @@ public class MainActivity extends Activity {
         imageBuffer = null;
         previewSize = null;
 
-        btnPreviewToggle.setEnabled(false);
         btnCapture.setEnabled(false);
         btnTimelapse.setEnabled(false);
-        btnPreviewToggle.setText("开始预览");
 
         tvStatus.setText("状态: 相机已断开");
         ivPreview.setImageBitmap(null);
@@ -765,26 +707,20 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // 保持预览运行
-        if (!isPreviewRunning) {
-            startPreview();
-        }
-
         currentFrameCount = 0;
         isTimelapsing = true;
 
         // 更新UI
         btnTimelapse.setText("停止延时摄影");
         btnCapture.setEnabled(false);
-        btnPreviewToggle.setEnabled(false);
         seekExposure.setEnabled(false);
         seekGain.setEnabled(false);
-        seekInterval.setEnabled(false);
         seekFrames.setEnabled(false);
 
         tvStatus.setText(String.format("延时摄影中: 0/%d", totalFrames));
+        timelapseStartTime = System.currentTimeMillis();
 
-        Log.d(TAG, String.format("开始延时摄影: %d帧, 间隔%dms", totalFrames, frameIntervalMs));
+        Log.d(TAG, String.format("开始延时摄影: %d帧", totalFrames));
 
         // 启动延时摄影（边拍边编码）
         new Thread(() -> {
@@ -798,23 +734,10 @@ public class MainActivity extends Activity {
                     return;
                 }
 
-                // 记录上次捕获时间
-                long lastCaptureTime = System.currentTimeMillis();
-
-                // 逐帧捕获并编码
+                // 逐帧捕获并编码（连续拍摄，无等待间隔）
                 for (int i = 0; i < totalFrames && isTimelapsing; i++) {
-                    // 计算目标捕获时间
-                    long targetTime = lastCaptureTime + frameIntervalMs;
-                    long now = System.currentTimeMillis();
-
-                    // 等待到目标时间
-                    if (now < targetTime) {
-                        Thread.sleep(targetTime - now);
-                    }
-
                     // 捕获新帧
                     Bitmap frame = captureFrame();
-                    lastCaptureTime = System.currentTimeMillis();
 
                     if (frame != null) {
                         // 保存一份用于预览显示（避免与captureFrame竞争imageBuffer）
@@ -831,12 +754,15 @@ public class MainActivity extends Activity {
                         frame.recycle(); // 立即释放
                         currentFrameCount = i + 1;
 
-                        // 计算渲染进度（边拍边渲染）
+                        // 计算渲染进度（边拍边渲染）和已拍摄时间
                         int captureProgress = (int) ((currentFrameCount * 100.0) / totalFrames);
+                        long elapsedMs = System.currentTimeMillis() - timelapseStartTime;
                         final int frameNum = currentFrameCount;
                         final int progress = captureProgress;
+                        final String elapsedTime = formatElapsedTime(elapsedMs);
                         runOnUiThread(() -> {
-                            tvStatus.setText(String.format("拍摄: %d/%d, 渲染: %d%%", frameNum, totalFrames, progress));
+                            tvStatus.setText(String.format("拍摄: %d/%d, 渲染: %d%%, 已耗时: %s",
+                                frameNum, totalFrames, progress, elapsedTime));
                         });
 
                         Log.d(TAG, String.format("已编码第 %d/%d 帧 (渲染进度: %d%%)", currentFrameCount, totalFrames, captureProgress));
@@ -855,18 +781,6 @@ public class MainActivity extends Activity {
                     releaseVideoEncoder();
                 }
 
-            } catch (InterruptedException e) {
-                Log.d(TAG, "延时摄影被中断");
-                // 中断时如果有帧也尝试完成视频
-                if (currentFrameCount > 0) {
-                    try {
-                        finishVideoEncoding();
-                    } catch (Exception ex) {
-                        releaseVideoEncoder();
-                    }
-                } else {
-                    releaseVideoEncoder();
-                }
             } catch (Exception e) {
                 Log.e(TAG, "延时摄影出错: " + e.getMessage(), e);
                 releaseVideoEncoder();
@@ -895,18 +809,11 @@ public class MainActivity extends Activity {
         // 只在没有正在渲染时才启用按钮（渲染完成后会自动启用）
         if (videoEncoder == null) {
             btnCapture.setEnabled(true);
-            btnPreviewToggle.setEnabled(true);
         }
 
         seekExposure.setEnabled(true);
         seekGain.setEnabled(true);
-        seekInterval.setEnabled(true);
         seekFrames.setEnabled(true);
-
-        // 保持预览运行
-        if (!isPreviewRunning) {
-            startPreview();
-        }
 
         Log.d(TAG, "延时摄影已停止");
     }
@@ -1083,9 +990,8 @@ public class MainActivity extends Activity {
         try {
             runOnUiThread(() -> {
                 tvStatus.setText("正在完成视频渲染: 处理中...");
-                // 渲染期间禁用拍照和预览切换
+                // 渲染期间禁用拍照
                 btnCapture.setEnabled(false);
-                btnPreviewToggle.setEnabled(false);
                 // 保持停止按钮可用（此时已停止捕获，正在完成剩余渲染）
                 btnTimelapse.setEnabled(true);
             });
@@ -1105,7 +1011,6 @@ public class MainActivity extends Activity {
                 tvStatus.setText("状态: 视频生成完成");
                 // 渲染完成，恢复按钮状态
                 btnCapture.setEnabled(true);
-                btnPreviewToggle.setEnabled(true);
                 btnTimelapse.setEnabled(true);
             });
 
@@ -1117,7 +1022,6 @@ public class MainActivity extends Activity {
                 tvStatus.setText("状态: 视频生成失败");
                 // 即使失败也要恢复按钮状态
                 btnCapture.setEnabled(true);
-                btnPreviewToggle.setEnabled(true);
                 btnTimelapse.setEnabled(true);
             });
         } finally {
@@ -1271,6 +1175,24 @@ public class MainActivity extends Activity {
             }
         }
         return yuv;
+    }
+
+    /**
+     * 格式化已拍摄时间
+     */
+    private String formatElapsedTime(long elapsedMs) {
+        long seconds = elapsedMs / 1000;
+        if (seconds < 60) {
+            return String.format(Locale.getDefault(), "%d秒", seconds);
+        } else if (seconds < 3600) {
+            long minutes = seconds / 60;
+            long secs = seconds % 60;
+            return String.format(Locale.getDefault(), "%d分%d秒", minutes, secs);
+        } else {
+            long hours = seconds / 3600;
+            long minutes = (seconds % 3600) / 60;
+            return String.format(Locale.getDefault(), "%d小时%d分", hours, minutes);
+        }
     }
 
     @Override

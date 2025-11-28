@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="ToupCam 拍照程序"
+        android:text="UrbanStarIR"
         android:textSize="20sp"
         android:textStyle="bold"
         android:gravity="center"
@@ -83,7 +83,7 @@
                     android:layout_width="0dp"
                     android:layout_weight="2"
                     android:layout_height="wrap_content"
-                    android:max="1000"
+                    android:max="160"
                     android:progress="1" />
 
                 <Button
@@ -149,60 +149,6 @@
                 android:textStyle="bold"
                 android:paddingTop="8dp" />
 
-            <!-- 帧间隔控制 -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="4dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="帧间隔"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:id="@+id/tv_interval_value"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="1.0 秒"
-                    android:textSize="14sp"
-                    android:minWidth="80dp"
-                    android:gravity="end" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <Button
-                    android:id="@+id/btn_interval_minus"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:text="-"
-                    android:textSize="20sp" />
-
-                <SeekBar
-                    android:id="@+id/seek_interval"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:max="60"
-                    android:progress="10" />
-
-                <Button
-                    android:id="@+id/btn_interval_plus"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:text="+"
-                    android:textSize="20sp" />
-            </LinearLayout>
-
             <!-- 总帧数控制 -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -246,7 +192,7 @@
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:max="300"
+                    android:max="500"
                     android:progress="10" />
 
                 <Button
@@ -280,32 +226,14 @@
                 android:paddingTop="2dp" />
 
             <!-- 拍照按钮 -->
-            <LinearLayout
+            <Button
+                android:id="@+id/btn_capture"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:paddingTop="8dp">
-
-                <Button
-                    android:id="@+id/btn_capture"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="拍照"
-                    android:textSize="16sp"
-                    android:enabled="false" />
-
-                <Button
-                    android:id="@+id/btn_preview_toggle"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="开始预览"
-                    android:textSize="16sp"
-                    android:layout_marginStart="8dp"
-                    android:enabled="false" />
-            </LinearLayout>
+                android:text="拍照"
+                android:textSize="16sp"
+                android:layout_marginTop="8dp"
+                android:enabled="false" />
 
             <!-- 延时摄影按钮 -->
             <Button
