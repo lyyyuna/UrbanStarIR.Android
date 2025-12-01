@@ -28,6 +28,7 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.appcompat.widget.SwitchCompat;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -59,6 +60,7 @@ public class MainActivity extends Activity {
     private TextView tvRealDuration;
     private SeekBar seekFrames;
     private Button btnTimelapse;
+    private SwitchCompat switchDenoise;
 
     // 相机相关
     private UsbManager usbManager;
@@ -205,6 +207,7 @@ public class MainActivity extends Activity {
                 currentExposureUs = progressToExposureTime(progress);
                 updateExposureDisplay();
                 updateTimelapseDisplay(); // 更新延时摄影时间显示
+                updateDenoiseAvailability(); // 更新去噪开关可用性
             }
 
             @Override
@@ -223,6 +226,10 @@ public class MainActivity extends Activity {
             int progress = seekExposure.getProgress();
             if (progress > 0) {
                 seekExposure.setProgress(progress - 1);
+                // 立即应用参数到相机
+                if (cameraHelper != null && cameraHelper.isAlive()) {
+                    cameraHelper.setExposureTime(currentExposureUs);
+                }
             }
         });
 
@@ -230,6 +237,10 @@ public class MainActivity extends Activity {
             int progress = seekExposure.getProgress();
             if (progress < seekExposure.getMax()) {
                 seekExposure.setProgress(progress + 1);
+                // 立即应用参数到相机
+                if (cameraHelper != null && cameraHelper.isAlive()) {
+                    cameraHelper.setExposureTime(currentExposureUs);
+                }
             }
         });
 
@@ -260,6 +271,10 @@ public class MainActivity extends Activity {
             int progress = seekGain.getProgress();
             if (progress > 0) {
                 seekGain.setProgress(progress - 1);
+                // 立即应用参数到相机
+                if (cameraHelper != null && cameraHelper.isAlive()) {
+                    cameraHelper.setGain(currentGain);
+                }
             }
         });
 
@@ -267,6 +282,10 @@ public class MainActivity extends Activity {
             int progress = seekGain.getProgress();
             if (progress < seekGain.getMax()) {
                 seekGain.setProgress(progress + 1);
+                // 立即应用参数到相机
+                if (cameraHelper != null && cameraHelper.isAlive()) {
+                    cameraHelper.setGain(currentGain);
+                }
             }
         });
 
@@ -279,6 +298,7 @@ public class MainActivity extends Activity {
         tvRealDuration = findViewById(R.id.tv_real_duration);
         seekFrames = findViewById(R.id.seek_frames);
         btnTimelapse = findViewById(R.id.btn_timelapse);
+        switchDenoise = findViewById(R.id.switch_denoise);
 
         // 总帧数控制 (10 - 5010 帧，进度0-500对应10-5010帧)
         Button btnFramesMinus = findViewById(R.id.btn_frames_minus);
@@ -325,6 +345,7 @@ public class MainActivity extends Activity {
         updateExposureDisplay();
         updateGainDisplay();
         updateTimelapseDisplay();
+        updateDenoiseAvailability();
     }
 
     /**
@@ -402,6 +423,18 @@ public class MainActivity extends Activity {
             int hours = (int) (realDurationSec / 3600);
             int minutes = (int) ((realDurationSec % 3600) / 60);
             tvRealDuration.setText(String.format(Locale.getDefault(), "拍摄耗时: %d小时%d分", hours, minutes));
+        }
+    }
+
+    /**
+     * 更新去噪开关的可用性
+     * 只有曝光时间 >= 1秒时才允许去噪
+     */
+    private void updateDenoiseAvailability() {
+        boolean canDenoise = currentExposureUs >= 1000000; // 1秒 = 1000000微秒
+        switchDenoise.setEnabled(canDenoise);
+        if (!canDenoise && switchDenoise.isChecked()) {
+            switchDenoise.setChecked(false);
         }
     }
 
@@ -623,6 +656,13 @@ public class MainActivity extends Activity {
             }
             bitmap.setPixels(pixels, 0, previewSize[0], 0, 0, previewSize[0], previewSize[1]);
 
+            // 如果开启去噪且曝光时间>=1秒，则进行去噪处理
+            if (switchDenoise.isChecked() && currentExposureUs >= 1000000) {
+                Bitmap denoisedBitmap = denoiseImage(bitmap);
+                bitmap.recycle(); // 释放原始图像
+                bitmap = denoisedBitmap;
+            }
+
             // 保存图像
             saveImage(bitmap);
         } catch (Exception e) {
@@ -740,6 +780,13 @@ public class MainActivity extends Activity {
                     Bitmap frame = captureFrame();
 
                     if (frame != null) {
+                        // 如果开启去噪且曝光时间>=1秒，则进行去噪处理
+                        if (switchDenoise.isChecked() && currentExposureUs >= 1000000) {
+                            Bitmap denoisedFrame = denoiseImage(frame);
+                            frame.recycle(); // 释放原始帧
+                            frame = denoisedFrame;
+                        }
+
                         // 保存一份用于预览显示（避免与captureFrame竞争imageBuffer）
                         synchronized (previewFrameLock) {
                             if (timelapsePreviewFrame != null && !timelapsePreviewFrame.isRecycled()) {
@@ -815,6 +862,13 @@ public class MainActivity extends Activity {
         seekGain.setEnabled(true);
         seekFrames.setEnabled(true);
 
+        // 重新应用当前参数到相机（确保延时摄影结束后相机参数是最新的）
+        if (cameraHelper != null && cameraHelper.isAlive()) {
+            cameraHelper.setExposureTime(currentExposureUs);
+            cameraHelper.setGain(currentGain);
+            Log.d(TAG, String.format("重新应用参数: 曝光=%dus, 增益=%d", currentExposureUs, currentGain));
+        }
+
         Log.d(TAG, "延时摄影已停止");
     }
 
@@ -828,15 +882,19 @@ public class MainActivity extends Activity {
             synchronized (captureLock) {
                 // 如果标志还是false，才等待新事件
                 if (!captureImageReady) {
-                    // 等待EVENT_IMAGE事件（最多等待5秒）
+                    // 根据曝光时间动态计算超时时间：曝光时间 + 5秒缓冲
+                    // 最少等待5秒，最多等待曝光时间 + 5秒
+                    long exposureMs = currentExposureUs / 1000; // 曝光时间（毫秒）
+                    long timeoutMs = Math.max(5000, exposureMs + 5000);
+
                     long startTime = System.currentTimeMillis();
                     while (!captureImageReady) {
                         long elapsed = System.currentTimeMillis() - startTime;
-                        if (elapsed >= 5000) {
-                            Log.e(TAG, "等待图像超时");
+                        if (elapsed >= timeoutMs) {
+                            Log.e(TAG, String.format("等待图像超时 (超时时间: %dms, 曝光时间: %dms)", timeoutMs, exposureMs));
                             return null;
                         }
-                        captureLock.wait(5000 - elapsed);
+                        captureLock.wait(timeoutMs - elapsed);
                     }
                 }
                 // 消费标志
@@ -1175,6 +1233,88 @@ public class MainActivity extends Activity {
             }
         }
         return yuv;
+    }
+
+    /**
+     * 去噪处理：检测并修复彩色噪声点
+     * 红外相机理论上只有黑白灰，所以检测彩色像素点（RGB差异大的点）并将其替换为周围像素的平均值
+     */
+    private Bitmap denoiseImage(Bitmap bitmap) {
+        if (bitmap == null) {
+            return null;
+        }
+
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        int[] pixels = new int[width * height];
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+
+        // 创建输出数组（避免在处理过程中影响周围像素的计算）
+        int[] outputPixels = new int[width * height];
+        System.arraycopy(pixels, 0, outputPixels, 0, pixels.length);
+
+        // 统计被处理的噪声点数量
+        int noiseCount = 0;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int i = y * width + x;
+                int pixel = pixels[i];
+                int r = Color.red(pixel);
+                int g = Color.green(pixel);
+                int b = Color.blue(pixel);
+
+                // 计算RGB之间的差异
+                // 对于灰度图像，RGB应该接近相等
+                int maxDiff = Math.max(Math.abs(r - g), Math.max(Math.abs(r - b), Math.abs(g - b)));
+
+                // 如果RGB差异大于阈值，认为是彩色噪声点
+                // 阈值设为30，可根据实际情况调整
+                int NOISE_THRESHOLD = 30;
+                if (maxDiff > NOISE_THRESHOLD) {
+                    // 计算周围3x3区域的平均值（排除噪声点自己）
+                    int sumR = 0, sumG = 0, sumB = 0;
+                    int count = 0;
+
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            // 跳过中心点（噪声点自己）
+                            if (dx == 0 && dy == 0) continue;
+
+                            int nx = x + dx;
+                            int ny = y + dy;
+
+                            // 边界检查
+                            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                int neighborPixel = pixels[ny * width + nx];
+                                sumR += Color.red(neighborPixel);
+                                sumG += Color.green(neighborPixel);
+                                sumB += Color.blue(neighborPixel);
+                                count++;
+                            }
+                        }
+                    }
+
+                    // 用周围像素的平均值替换噪声点
+                    if (count > 0) {
+                        int avgR = sumR / count;
+                        int avgG = sumG / count;
+                        int avgB = sumB / count;
+                        outputPixels[i] = Color.rgb(avgR, avgG, avgB);
+                        noiseCount++;
+                    }
+                }
+            }
+        }
+
+        // 创建去噪后的Bitmap
+        Bitmap denoisedBitmap = Bitmap.createBitmap(width, height, bitmap.getConfig());
+        denoisedBitmap.setPixels(outputPixels, 0, width, 0, 0, width, height);
+
+        Log.d(TAG, String.format("去噪处理完成，共处理 %d 个噪声点 (%.2f%%)",
+                noiseCount, (noiseCount * 100.0) / pixels.length));
+
+        return denoisedBitmap;
     }
 
     /**
