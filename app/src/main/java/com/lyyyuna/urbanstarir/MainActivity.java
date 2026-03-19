@@ -1,4 +1,4 @@
-package com.example.toupcamdemo;
+package com.lyyyuna.urbanstarir;
 
 import android.Manifest;
 import android.app.Activity;
@@ -44,7 +44,7 @@ import java.util.Locale;
  */
 public class MainActivity extends Activity {
     private static final String TAG = "ToupCamDemo";
-    private static final String ACTION_USB_PERMISSION = "com.example.toupcamdemo.USB_PERMISSION";
+    private static final String ACTION_USB_PERMISSION = "com.lyyyuna.urbanstarir.USB_PERMISSION";
     private static final int REQUEST_STORAGE_PERMISSION = 100;
 
     // UI 控件

@@ -3,15 +3,15 @@ plugins {
 }
 
 android {
-    namespace 'com.example.toupcamdemo'
-    compileSdkVersion 34  // Android 14
-    buildToolsVersion "34.0.0"
+    namespace 'com.lyyyuna.urbanstarir'
+    compileSdkVersion 35  // Android 15
+    buildToolsVersion "35.0.0"
     ndkVersion "25.2.9519653"
 
     defaultConfig {
-        applicationId "com.example.toupcamdemo"
-        minSdkVersion 21  // Android 5.0
-        targetSdkVersion 34  // Android 14
+        applicationId "com.lyyyuna.urbanstarir"
+        minSdkVersion 24  // Android 7.0
+        targetSdkVersion 35  // Android 15
         versionCode 1
         versionName "1.0"
 
@@ -33,7 +33,7 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    lintOptions {
+    lint {
         abortOnError false
         checkReleaseBuilds false
     }
