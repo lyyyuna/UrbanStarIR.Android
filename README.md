@@ -1,267 +1,212 @@
-# ToupCam Android Demo
+# UrbanStarIR Android
 
-这是一个简化的 ToupCam Android SDK 示例应用，演示如何连接摄像头设备并获取状态信息。
+UrbanStarIR 是一个基于 ToupCam SDK 的 Android 相机应用，用于连接 USB ToupCam/兼容相机，进行实时预览、拍照、曝光/增益控制和延时摄影。
 
-## 功能特性
+## 功能
 
-- ✅ 自动扫描并检测 USB 连接的 ToupCam 相机
-- ✅ 请求 USB 权限并打开相机设备
-- ✅ 显示相机基本信息（VID、PID、型号、预览尺寸等）
-- ✅ 监听相机连接/断开事件
-- ✅ 实时显示相机状态
+- 自动扫描 USB 设备并请求 USB 访问权限
+- 打开 ToupCam/兼容相机并显示实时预览
+- 手动调节曝光时间和增益
+- 拍照并保存到系统相册
+- 长曝光场景下支持可选去噪
+- 延时摄影拍摄并编码为视频
+- 监听相机断开和相机错误事件
 
 ## 系统要求
 
-- **Android 版本**: Android 5.0 (API 21) 及以上
-- **测试版本**: ✅ 已在 Android 14 上测试优化
-- **硬件要求**: 支持 USB OTG 的 Android 设备
-- **相机支持**: ToupCam 系列相机（VID: 0x0547）
+- Android 7.0 (API 24) 及以上
+- 支持 USB Host/OTG 的 Android 设备
+- ToupCam 或兼容 USB 相机
+- 当前 APK 仅打包 `arm64-v8a` 原生库
+
+当前 Gradle 配置：
+
+- Android Gradle Plugin: `8.7.3`
+- Gradle Wrapper: `8.9`
+- Compile SDK: `35`
+- Target SDK: `35`
+- Min SDK: `24`
+- NDK: `25.2.9519653`
 
 ## 项目结构
 
-```
-android_demo/
+```text
+UrbanStarIR.Android/
 ├── app/
-│   ├── build.gradle                    # 应用级构建配置
+│   ├── build.gradle
 │   └── src/main/
-│       ├── AndroidManifest.xml         # 应用清单文件
-│       ├── java/com/example/toupcamdemo/
-│       │   ├── MainActivity.java       # 主活动（UI 和业务逻辑）
-│       │   └── ToupCamHelper.java      # 相机辅助类（JNI 封装）
-│       ├── res/
-│       │   ├── layout/
-│       │   │   └── activity_main.xml   # 主界面布局
-│       │   ├── values/
-│       │   │   └── strings.xml         # 字符串资源
-│       │   └── xml/
-│       │       └── device_filter.xml   # USB 设备过滤器
-│       └── jniLibs/                    # 原生库目录（需手动复制）
-│           ├── armeabi-v7a/
-│           │   └── libtoupcam.so
-│           ├── arm64-v8a/
-│           │   └── libtoupcam.so
-│           ├── x86/
-│           │   └── libtoupcam.so
-│           └── x86_64/
-│               └── libtoupcam.so
-├── build.gradle                        # 项目级构建配置
-└── settings.gradle                     # 项目设置
+│       ├── AndroidManifest.xml
+│       ├── java/com/lyyyuna/urbanstarir/
+│       │   ├── MainActivity.java
+│       │   └── ToupCamHelper.java
+│       ├── jni/
+│       │   ├── Android.mk
+│       │   ├── Application.mk
+│       │   ├── jnicam.cpp
+│       │   └── libusbcam/
+│       ├── jniLibs/
+│       │   ├── arm64-v8a/
+│       │   │   ├── libjnicam.so
+│       │   │   └── libtoupcam.so
+│       │   ├── armeabi-v7a/
+│       │   ├── x86/
+│       │   └── x86_64/
+│       └── res/
+│           ├── layout/activity_main.xml
+│           ├── values/strings.xml
+│           └── xml/device_filter.xml
+├── build.gradle
+├── gradle/wrapper/gradle-wrapper.properties
+└── settings.gradle
 ```
 
-## 安装步骤
+说明：
 
-### 1. 复制原生库文件
+- `jniLibs/` 中已包含预编译的 `libtoupcam.so` 和 `libjnicam.so`。
+- `app/src/main/jni/` 保留 JNI 源码和 NDK makefile，但当前 Gradle 未配置 `externalNativeBuild`，默认构建不会重新编译 JNI。
+- `app/build.gradle` 通过 `abiFilters 'arm64-v8a'` 限制 APK 只打包 arm64 库。如需支持其他 ABI，需要同时调整 Gradle 配置并确认对应 so 可用。
 
-将 ToupCam SDK 的原生库文件复制到项目的 `jniLibs` 目录：
+## 构建
+
+使用 Android Studio 打开仓库根目录，等待 Gradle 同步完成后运行 `app`。
+
+也可以在命令行构建 debug APK：
 
 ```bash
-# 创建目标目录
-mkdir -p app/src/main/jniLibs/{armeabi-v7a,arm64-v8a,x86,x86_64}
-
-# 复制库文件
-cp ../android/arm/libtoupcam.so app/src/main/jniLibs/armeabi-v7a/
-cp ../android/arm64/libtoupcam.so app/src/main/jniLibs/arm64-v8a/
-cp ../android/x86/libtoupcam.so app/src/main/jniLibs/x86/
-cp ../android/x64/libtoupcam.so app/src/main/jniLibs/x86_64/
+./gradlew :app:assembleDebug
 ```
 
-### 2. 配置 JNI 实现
+构建产物位置：
 
-⚠️ **注意**: 本示例需要实现 JNI 原生代码（`libjnicam.so`）。
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
 
-有两种方式：
+## 运行
 
-**方式 A**: 参考完整示例实现 JNI
-
-可以参考 SDK 完整示例的 JNI 实现：
-- 参考文件: `android/samples/demoandroid/app/src/main/jni/jnicam.cpp`
-- 将 JNI 代码集成到本项目中
-
-**方式 B**: 使用完整示例
-
-直接使用 SDK 提供的完整示例：
-- 位置: `android/samples/demoandroid/`
-- 这是一个完整可运行的 Android Studio 项目
-
-### 3. 使用 Android Studio 打开项目
-
-1. 启动 Android Studio
-2. 选择 `Open an existing project`
-3. 导航到 `android_demo` 目录并打开
-4. 等待 Gradle 同步完成
-
-### 4. 构建和运行
-
-1. 连接支持 USB OTG 的 Android 设备
-2. 在 Android Studio 中点击 `Run` 按钮
-3. 选择目标设备并安装应用
-4. 使用 USB OTG 连接线将 ToupCam 相机连接到 Android 设备
-5. 应用会自动检测相机并请求权限
+1. 将应用安装到支持 USB OTG 的 Android 设备。
+2. 使用 USB OTG 线连接相机。
+3. 启动应用，或在系统弹出的 USB 设备关联入口中打开应用。
+4. 授予 USB 访问权限。
+5. 相机打开成功后，应用会自动开始预览，并启用拍照和延时摄影按钮。
 
 ## 使用说明
 
-### 连接流程
+### 预览和拍照
 
-1. **启动应用**
-   - 应用启动后会自动扫描 USB 设备
+- 应用启动后会扫描已连接的 USB 设备。
+- 识别到相机后会请求 USB 权限并打开相机。
+- 预览区域显示当前图像。
+- 点击“拍照”会保存 JPEG 到系统相册的 `DCIM/ToupCam` 目录。
 
-2. **连接相机**
-   - 通过 USB OTG 线连接 ToupCam 相机
-   - 应用会检测到设备并弹出权限请求
+### 曝光和增益
 
-3. **授予权限**
-   - 点击"确定"授予 USB 访问权限
-   - 应用会自动打开相机
+- 曝光时间通过滑杆和加减按钮调整。
+- 曝光范围：
+  - 0 到 1 秒：每档 10ms
+  - 1 到 30 秒：每档 0.5s
+- 增益通过滑杆和加减按钮调整，步进为 10。
+- 相机打开后应用会关闭自动曝光，以便手动控制曝光和增益。
 
-4. **查看信息**
-   - 状态栏显示连接状态
-   - 信息区域显示相机详细信息：
-     - VID (厂商 ID)
-     - PID (产品 ID)
-     - 设备名称
-     - 相机型号
-     - 连接状态
-     - 预览尺寸
+### 去噪
 
-### 核心 API 说明
+- 去噪开关只在曝光时间大于等于 1 秒时可用。
+- 短曝光时去噪开关会被禁用。
 
-#### ToupCamHelper 类
+### 延时摄影
 
-```java
-// 创建实例
-ToupCamHelper cameraHelper = new ToupCamHelper(context, eventHandler);
-
-// 打开设备
-boolean success = cameraHelper.openDevice(vendorId, productId, fd);
-
-// 获取预览尺寸
-int[] size = cameraHelper.getPreviewSize();  // [width, height]
-
-// 获取相机型号
-String model = cameraHelper.getModelName(vendorId, productId);
-
-// 检查连接状态
-boolean alive = cameraHelper.isAlive();
-
-// 释放相机
-cameraHelper.releaseCamera();
-```
-
-#### 相机事件
-
-```java
-// 事件处理器
-Handler eventHandler = new Handler(Looper.getMainLooper()) {
-    @Override
-    public void handleMessage(Message msg) {
-        if (msg.what == ToupCamHelper.MSG_EVENT) {
-            int event = msg.arg1;
-            switch (event) {
-                case ToupCamHelper.EVENT_IMAGE:
-                    // 图像就绪
-                    break;
-                case ToupCamHelper.EVENT_EXPOSURE:
-                    // 曝光改变
-                    break;
-                case ToupCamHelper.EVENT_DISCONNECTED:
-                    // 设备断开
-                    break;
-            }
-        }
-    }
-};
-```
+- 可设置总帧数。
+- 界面会显示按 30fps 计算的视频时长，以及按当前曝光时间估算的实际拍摄耗时。
+- 延时摄影期间会禁用部分控制，避免拍摄参数在过程中变化。
 
 ## 支持的相机
 
-本示例支持 ToupCam 系列相机：
-- **厂商 ID (VID)**: `0x0547` (十进制: 1351)
-- **支持接口**: USB 2.0 / USB 3.0
+代码中当前识别以下 USB VID：
 
-如需支持其他厂商的相机，可以修改以下文件：
-1. `MainActivity.java` 中的 `isToupCamDevice()` 方法
-2. `res/xml/device_filter.xml` 中的 vendor-id
+- `0x0547` - ToupTek/ToupCam
+- `0x1f4d` - 兼容相机 VID
+- `0x0403` - FTDI 相关设备
 
-## 权限说明
+系统 USB attach 过滤器当前配置了 `0x0547`：
 
-应用需要以下权限：
+```xml
+<usb-device vendor-id="1351" />
+```
 
-- `android.hardware.usb.host` - USB 主机模式
-- `android.permission.USB_PERMISSION` - USB 访问权限
+如需支持新的设备，请同步检查：
 
-这些权限已在 `AndroidManifest.xml` 中配置。
+- `MainActivity.java` 中的 `isCameraDevice()` 方法
+- `app/src/main/res/xml/device_filter.xml`
+
+## 权限
+
+应用声明了以下权限/特性：
+
+- `android.hardware.usb.host`
+- `android.permission.USB_PERMISSION`
+- `android.permission.WRITE_EXTERNAL_STORAGE`，仅 Android 9 及以下
+- `android.permission.READ_EXTERNAL_STORAGE`，仅 Android 12 及以下
+- `android.permission.READ_MEDIA_IMAGES`
+
+Android 10 及以上保存图片主要通过 `MediaStore`。
+
+## Native 库
+
+Java 层通过 `ToupCamHelper` 加载以下 native 库：
+
+```java
+System.loadLibrary("toupcam");
+System.loadLibrary("jnicam");
+```
+
+当前 debug APK 中预期包含：
+
+```text
+lib/arm64-v8a/libtoupcam.so
+lib/arm64-v8a/libjnicam.so
+```
+
+如果运行时报 `UnsatisfiedLinkError`，优先检查：
+
+1. APK 中是否包含当前设备 ABI 对应的 `libtoupcam.so` 和 `libjnicam.so`。
+2. `app/build.gradle` 中的 `abiFilters` 是否与设备 ABI 匹配。
+3. `jniLibs` 中对应 ABI 的 so 是否完整。
 
 ## 故障排除
 
-### 问题 1: 检测不到相机
-- 确认 Android 设备支持 USB OTG
-- 检查 USB OTG 线缆是否正常
-- 确认相机电源已开启
-- 查看设备管理器中是否显示相机
+### 检测不到相机
 
-### 问题 2: 权限请求失败
-- 在设置中手动授予应用 USB 权限
-- 尝试断开并重新连接相机
-- 重启应用
+- 确认 Android 设备支持 USB OTG/USB Host。
+- 检查 OTG 线和相机供电。
+- 确认相机 VID 是否在 `isCameraDevice()` 和 `device_filter.xml` 中配置。
+- 重新插拔相机后重启应用。
 
-### 问题 3: 原生库加载失败
-- 确认 `libtoupcam.so` 已正确复制到 `jniLibs` 目录
-- 检查对应架构的库文件是否存在
-- 查看 Logcat 日志了解详细错误
+### USB 权限失败
 
-### 问题 4: 编译错误
-- 确认 Android SDK 和 NDK 版本匹配
-- 清理并重新构建项目: `Build > Clean Project` > `Build > Rebuild Project`
+- 断开相机后重新连接并重新授权。
+- 在系统设置中清除应用默认 USB 关联后重试。
+- 查看 Logcat 中 `ToupCamDemo` 标签的日志。
 
-## 进阶功能
+### 原生库加载失败
 
-要实现更多功能（如图像预览、拍照、参数调整等），请参考：
+- 确认目标设备是 `arm64-v8a`，或调整 ABI 配置重新打包。
+- 确认 `libtoupcam.so` 和 `libjnicam.so` 都存在。
+- 如果替换了 SDK so，确保 `jnicam` 与 `toupcam` 的 ABI 和版本兼容。
 
-1. **完整示例项目**
-   - 路径: `android/samples/demoandroid/`
-   - 包含完整的 JNI 实现和图像渲染
+### 构建失败
 
-2. **API 文档**
-   - 中文: `doc/hans.html`
-   - 英文: `doc/en.html`
+- 确认本机已安装 Android SDK 35 和 Build Tools 35.0.0。
+- 确认 Android Studio/Gradle 能访问本机 Gradle 缓存。
+- 重新执行：
 
-3. **C/C++ API 头文件**
-   - 文件: `inc/toupcam.h`
-   - 包含所有 API 函数定义
+```bash
+./gradlew clean :app:assembleDebug
+```
 
-## 开发环境
+## 相关文件
 
-- **Android Studio**: 4.0 及以上（推荐最新版）
-- **Gradle**: 7.0.4
-- **Compile SDK**: 34 (Android 14)
-- **Min SDK**: 21 (Android 5.0)
-- **Target SDK**: 34 (Android 14)
-- **NDK**: 25.2.9519653 (可选，用于自定义 JNI)
-
-### Android 14 特别说明
-本项目已针对 Android 14 进行优化，详见 [ANDROID_14_NOTES.md](ANDROID_14_NOTES.md)
-
-## 许可证
-
-本示例代码基于 ToupCam SDK。
-请参考 ToupCam SDK 的许可协议使用。
-
-## 技术支持
-
-- ToupCam 官网: [toupcam.com](https://www.toupcam.com)
-- SDK 文档: 参见 `doc/` 目录
-- GitHub Issues: 请在项目仓库提交问题
-
-## 更新日志
-
-### v1.0 (2025-01-26)
-- 初始版本
-- 实现基本的相机连接和状态获取
-- 支持 USB 设备扫描和权限管理
-- 显示相机基本信息
-
----
-
-**作者**: ToupCam SDK 示例
-**日期**: 2025-01-26
-**SDK 版本**: 59.29176.20250806
+- 应用入口：`app/src/main/java/com/lyyyuna/urbanstarir/MainActivity.java`
+- JNI 封装：`app/src/main/java/com/lyyyuna/urbanstarir/ToupCamHelper.java`
+- USB 过滤器：`app/src/main/res/xml/device_filter.xml`
+- 主界面：`app/src/main/res/layout/activity_main.xml`
+- Android 14 说明：`ANDROID_14_NOTES.md`
